@@ -41,9 +41,7 @@ export interface GameState {
   drawnCard: Card | null // If the player just drew a card, store it here
   lastAction: string | null
   drawStack: number // For stacking Draw Two and Draw Four
-  // This helps us track which cards to draw if there is a stack
-  // for example, if player 1 plays +2, then player 2 plays +2, the next player will draw 4 cards.
-  // This variable will be 4 in this case.
+  playerCache: Record<string, Card[]> // Cache for players who left
 }
 
 export type GameActions = {
@@ -105,6 +103,7 @@ function getNextPlayerIndex(
   direction: 1 | -1,
   numPlayers: number
 ): number {
+  if (numPlayers === 0) return 0
   return (current + direction + numPlayers) % numPlayers
 }
 
@@ -118,11 +117,6 @@ function isValidMove(
   if (card.color === null) return true
 
   // If there's a draw stack, only +2 or +4 cards can be played
-  // We don't consider +4 here as it's a wild card and will be handled by the first condition.
-  // We must allow the user to play a +2 or +4 even if the color doesn't match
-  // this is how it works in the official uno rules.
-  // We must also allow the user to play a +2 or +4 even if the value doesn't match
-  // since the only criteria is to play a similar "draw card".
   if (
     isDrawingPhase &&
     (topCard.value === "drawTwo" || topCard.value === "wildDrawFour")
@@ -139,11 +133,25 @@ function isValidMove(
   return false
 }
 
+// Helper to handle deck refill
+function ensureDeck(game: GameState) {
+  if (game.deck.length === 0) {
+    if (game.discardPile.length > 1) {
+      const currentTopCard = game.discardPile.pop()!
+      game.deck = shuffle(game.discardPile)
+      game.discardPile = [currentTopCard]
+      game.deck.forEach((c) => {
+        if (c.value === "wild" || c.value === "wildDrawFour") c.color = null
+      })
+    }
+  }
+}
+
 // --- Logic ---
 
 Rune.initLogic({
-  minPlayers: 2,
-  maxPlayers: 4,
+  minPlayers: 1,
+  maxPlayers: 6,
   setup: (allPlayerIds) => {
     let deck = shuffle(createDeck())
     const players: PlayerState[] = allPlayerIds.map((id) => ({
@@ -157,22 +165,14 @@ Rune.initLogic({
       for (let i = 0; i < 7; i++) {
         const card = deck.pop()
         if (card) player.hand.push(card)
-        else {
-          throw Rune.invalidAction() // Removed argument
-        }
       }
     }
 
-    // Start discard pile with a non-Wild Draw Four card
+    // Start discard pile
     let startCard: Card
     do {
       if (deck.length === 0) {
         deck = shuffle(createDeck())
-        players.forEach((p) =>
-          p.hand.forEach((c) => {
-            deck = deck.filter((deckCard) => deckCard.id !== c.id)
-          })
-        )
       }
       startCard = deck.pop()!
       if (startCard.value === "wildDrawFour") {
@@ -192,34 +192,37 @@ Rune.initLogic({
     let direction: 1 | -1 = 1
     let drawStack = 0
 
-    if (startCard.value === "skip") {
-      currentPlayerIndex = getNextPlayerIndex(
-        currentPlayerIndex,
-        direction,
-        allPlayerIds.length
-      )
-    } else if (startCard.value === "reverse") {
-      if (allPlayerIds.length === 2) {
+    // Handle initial card effects
+    if (players.length > 0) {
+      if (startCard.value === "skip") {
         currentPlayerIndex = getNextPlayerIndex(
           currentPlayerIndex,
           direction,
-          allPlayerIds.length
+          players.length
         )
-      } else {
-        direction = (direction * -1) as 1 | -1 // Explicitly cast after multiplication
+      } else if (startCard.value === "reverse") {
+        if (players.length === 2) {
+          currentPlayerIndex = getNextPlayerIndex(
+            currentPlayerIndex,
+            direction,
+            players.length
+          )
+        } else {
+          direction = (direction * -1) as 1 | -1
+        }
+      } else if (startCard.value === "drawTwo") {
+        drawStack = 2
+        const firstPlayer = players[currentPlayerIndex]
+        for (let i = 0; i < 2; i++) {
+          const card = deck.pop()
+          if (card) firstPlayer.hand.push(card)
+        }
+        currentPlayerIndex = getNextPlayerIndex(
+          currentPlayerIndex,
+          direction,
+          players.length
+        )
       }
-    } else if (startCard.value === "drawTwo") {
-      drawStack = 2
-      const firstPlayer = players[currentPlayerIndex]
-      for (let i = 0; i < 2; i++) {
-        const card = deck.pop()
-        if (card) firstPlayer.hand.push(card)
-      }
-      currentPlayerIndex = getNextPlayerIndex(
-        currentPlayerIndex,
-        direction,
-        allPlayerIds.length
-      )
     }
 
     return {
@@ -233,6 +236,7 @@ Rune.initLogic({
       drawnCard: null,
       lastAction: "Game Started",
       drawStack,
+      playerCache: {},
     }
   },
   actions: {
@@ -240,7 +244,7 @@ Rune.initLogic({
       const playerIndex = game.players.findIndex((p) => p.id === playerId)
       const player = game.players[playerIndex]
 
-      if (game.currentPlayerIndex !== playerIndex) throw Rune.invalidAction() // Removed argument
+      if (game.currentPlayerIndex !== playerIndex) throw Rune.invalidAction()
 
       const cardIndex = player.hand.findIndex((c) => c.id === cardId)
       let card: Card | undefined = player.hand[cardIndex]
@@ -251,7 +255,7 @@ Rune.initLogic({
         playingDrawn = true
       }
 
-      if (!card) throw Rune.invalidAction() // Removed argument
+      if (!card) throw Rune.invalidAction()
 
       const topCard = game.discardPile[game.discardPile.length - 1]
       const canPlayDrawCard =
@@ -261,14 +265,14 @@ Rune.initLogic({
         !isValidMove(card, topCard, game.currentColor, game.drawStack > 0) &&
         !canPlayDrawCard
       ) {
-        throw Rune.invalidAction() // Removed argument
+        throw Rune.invalidAction()
       }
 
       if (
         (card.value === "wild" || card.value === "wildDrawFour") &&
         !selectedColor
       ) {
-        throw Rune.invalidAction() // Removed argument
+        throw Rune.invalidAction()
       }
 
       if (playingDrawn) {
@@ -289,19 +293,11 @@ Rune.initLogic({
 
       if (player.hand.length === 1 && !player.hasCalledUno) {
         game.lastAction += ` (Forgot UNO! ${player.id} draws 2)`
+        ensureDeck(game)
         for (let i = 0; i < 2; i++) {
+          ensureDeck(game)
           const c = game.deck.pop()
           if (c) player.hand.push(c)
-          else if (game.discardPile.length > 1) {
-            const currentTopCard = game.discardPile.pop()!
-            game.deck = shuffle(game.discardPile)
-            game.discardPile = [currentTopCard]
-            const reshuffledCard = game.deck.pop()
-            if (reshuffledCard) player.hand.push(reshuffledCard)
-            else throw Rune.invalidAction() // Removed argument
-          } else {
-            throw Rune.invalidAction() // Removed argument
-          }
         }
       }
 
@@ -313,7 +309,7 @@ Rune.initLogic({
         if (game.players.length === 2) {
           nextPlayerSkip = true
         } else {
-          game.direction = (game.direction * -1) as 1 | -1 // Explicitly cast
+          game.direction = (game.direction * -1) as 1 | -1
         }
       } else if (card.value === "skip") {
         nextPlayerSkip = true
@@ -345,19 +341,11 @@ Rune.initLogic({
 
         if (!canStackDraw) {
           game.lastAction += ` (${currentPlayer.id} draws ${game.drawStack} cards)`
+          ensureDeck(game)
           for (let i = 0; i < game.drawStack; i++) {
+            ensureDeck(game)
             const c = game.deck.pop()
             if (c) currentPlayer.hand.push(c)
-            else if (game.discardPile.length > 1) {
-              const currentTopCard = game.discardPile.pop()!
-              game.deck = shuffle(game.discardPile)
-              game.discardPile = [currentTopCard]
-              const reshuffledCard = game.deck.pop()
-              if (reshuffledCard) currentPlayer.hand.push(reshuffledCard)
-              else throw Rune.invalidAction() // Removed argument
-            } else {
-              throw Rune.invalidAction() // Removed argument
-            }
           }
           game.drawStack = 0
           game.currentPlayerIndex = getNextPlayerIndex(
@@ -375,22 +363,14 @@ Rune.initLogic({
       const playerIndex = game.players.findIndex((p) => p.id === playerId)
       const player = game.players[playerIndex]
 
-      if (game.currentPlayerIndex !== playerIndex) throw Rune.invalidAction() // Removed argument
+      if (game.currentPlayerIndex !== playerIndex) throw Rune.invalidAction()
       if (game.drawStack > 0) {
         game.lastAction += ` (${player.id} draws ${game.drawStack} cards)`
+        ensureDeck(game)
         for (let i = 0; i < game.drawStack; i++) {
+          ensureDeck(game)
           const c = game.deck.pop()
           if (c) player.hand.push(c)
-          else if (game.discardPile.length > 1) {
-            const currentTopCard = game.discardPile.pop()!
-            game.deck = shuffle(game.discardPile)
-            game.discardPile = [currentTopCard]
-            const reshuffledCard = game.deck.pop()
-            if (reshuffledCard) player.hand.push(reshuffledCard)
-            else throw Rune.invalidAction() // Removed argument
-          } else {
-            throw Rune.invalidAction() // Removed argument
-          }
         }
         game.drawStack = 0
         player.hasCalledUno = false
@@ -402,19 +382,11 @@ Rune.initLogic({
         return
       }
 
-      if (game.drawnCard) throw Rune.invalidAction() // Removed argument
+      if (game.drawnCard) throw Rune.invalidAction()
 
-      if (game.deck.length === 0) {
-        const currentTopCard = game.discardPile.pop()!
-        game.deck = shuffle(game.discardPile)
-        game.discardPile = [currentTopCard]
-        game.deck.forEach((c) => {
-          if (c.value === "wild" || c.value === "wildDrawFour") c.color = null
-        })
-      }
-
+      ensureDeck(game)
       const newCard = game.deck.pop()
-      if (!newCard) throw Rune.invalidAction() // Removed argument
+      if (!newCard) throw Rune.invalidAction()
 
       game.drawnCard = newCard
       game.lastAction = `${player.id} drew a card.`
@@ -425,9 +397,9 @@ Rune.initLogic({
       const playerIndex = game.players.findIndex((p) => p.id === playerId)
       const player = game.players[playerIndex]
 
-      if (game.currentPlayerIndex !== playerIndex) throw Rune.invalidAction() // Removed argument
-      if (!game.drawnCard) throw Rune.invalidAction() // Removed argument
-      if (game.drawStack > 0) throw Rune.invalidAction() // Removed argument
+      if (game.currentPlayerIndex !== playerIndex) throw Rune.invalidAction()
+      if (!game.drawnCard) throw Rune.invalidAction()
+      if (game.drawStack > 0) throw Rune.invalidAction()
 
       player.hand.push(game.drawnCard)
       player.hasCalledUno = false
@@ -443,18 +415,81 @@ Rune.initLogic({
 
     callUno: (_, { game, playerId }) => {
       const player = game.players.find((p) => p.id === playerId)
-      if (!player) throw Rune.invalidAction() // Removed argument
+      if (!player) throw Rune.invalidAction()
 
       if (
         game.currentPlayerIndex ===
         game.players.findIndex((p) => p.id === playerId)
       ) {
-        if (player.hand.length > 2) throw Rune.invalidAction() // Removed argument
+        if (player.hand.length > 2) throw Rune.invalidAction()
 
         player.hasCalledUno = true
         game.lastAction = `${player.id} called UNO!`
       } else {
-        throw Rune.invalidAction() // Removed argument
+        throw Rune.invalidAction()
+      }
+    },
+  },
+  events: {
+    playerJoined: (playerId, { game }) => {
+      // Don't add if already exists
+      if (game.players.some((p) => p.id === playerId)) return
+
+      let hand: Card[] = []
+
+      // Restore from cache if available
+      if (game.playerCache[playerId]) {
+        hand = game.playerCache[playerId]
+        delete game.playerCache[playerId]
+      } else {
+        // Deal new hand
+        ensureDeck(game)
+        for (let i = 0; i < 7; i++) {
+          ensureDeck(game)
+          const c = game.deck.pop()
+          if (c) hand.push(c)
+        }
+      }
+
+      game.players.push({
+        id: playerId,
+        hand,
+        hasCalledUno: false,
+      })
+
+      game.lastAction = `${playerId} joined.`
+    },
+    playerLeft: (playerId, { game }) => {
+      const idx = game.players.findIndex((p) => p.id === playerId)
+      if (idx !== -1) {
+        const player = game.players[idx]
+
+        // Cache hand
+        game.playerCache[playerId] = player.hand
+
+        // If it was the current player's turn, we need to handle state
+        const wasCurrentPlayer = idx === game.currentPlayerIndex
+
+        // Remove player
+        game.players.splice(idx, 1)
+
+        // Fix index
+        if (game.players.length === 0) {
+          game.currentPlayerIndex = 0
+        } else {
+          if (idx < game.currentPlayerIndex) {
+            game.currentPlayerIndex--
+          }
+          game.currentPlayerIndex %= game.players.length
+        }
+
+        if (wasCurrentPlayer) {
+          // Reset turn-specific state
+          game.drawnCard = null
+          // Note: game.drawStack persists to the next player
+        }
+
+        game.lastAction = `${playerId} left.`
       }
     },
   },

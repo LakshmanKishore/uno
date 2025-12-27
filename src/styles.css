@@ -1,15 +1,15 @@
 :root {
-  /* Muted, neutral background palette */
-  --bg-main: #0f172a;
-  --bg-gradient: radial-gradient(circle at 50% 30%, #1e293b 0%, #0f172a 100%);
+  /* Classic Card Table Theme (Dark Green/Emerald) */
+  --bg-main: #0a2f1f;
+  --bg-gradient: radial-gradient(circle at 50% 40%, #1a4c35 0%, #0a2f1f 100%);
   
-  /* Vibrant Card Colors - slightly adjusted for modern feel */
+  /* Vibrant Card Colors */
   --card-red: #ff5e57;
   --card-blue: #3c40c6;
   --card-green: #0be881;
   --card-yellow: #ffdd59;
   --card-wild: #8e44ad;
-  --card-back: #1e293b;
+  --card-back: #0f3d2a; /* Darker green for card back */
 
   /* Dimensions */
   --card-width: 80px;
@@ -18,14 +18,14 @@
   
   /* Text */
   --text-primary: #ecf0f1;
-  --text-secondary: #94a3b8;
+  --text-secondary: #8ab6a3; /* Light green-grey */
   
   /* UI Elements */
-  --btn-bg: #334155;
-  --btn-hover: #475569;
-  --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.2);
-  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.25);
-  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.35);
+  --btn-bg: #1e5c45;
+  --btn-hover: #2a7a5c;
+  --shadow-soft: 0 4px 12px rgba(0, 0, 0, 0.3);
+  --shadow-card: 0 2px 8px rgba(0, 0, 0, 0.35);
+  --shadow-hover: 0 8px 24px rgba(0, 0, 0, 0.5);
 
   --ease-out: cubic-bezier(0.2, 0.8, 0.2, 1);
 }
@@ -64,18 +64,37 @@ main {
   padding: 0;
   margin: 0;
   display: flex;
+  flex-direction: row;
   justify-content: center;
-  gap: 24px;
+  align-items: flex-start;
+  gap: 12px;
   width: 100%;
+  overflow-x: auto;
+  flex-wrap: nowrap;
+  padding-bottom: 8px; /* For scrollbar space */
+}
+
+/* Scrollbar styling */
+#playersSection::-webkit-scrollbar {
+  height: 4px;
+}
+#playersSection::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+}
+#playersSection::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 4px;
 }
 
 .player-info {
   display: flex;
   flex-direction: column;
   align-items: center;
-  opacity: 0.5;
+  opacity: 0.6;
   transition: opacity 0.3s var(--ease-out), transform 0.3s var(--ease-out);
   position: relative;
+  min-width: 50px; /* Minimum width to prevent crushing */
+  flex-shrink: 1; /* Allow shrinking */
 }
 
 .player-info.current-turn {
@@ -84,44 +103,53 @@ main {
 }
 
 .player-info img {
-  width: 48px;
-  height: 48px;
+  width: 42px; /* Slightly smaller default */
+  height: 42px;
   border-radius: 50%;
-  border: 2px solid transparent;
+  border: 2px solid rgba(255,255,255,0.1);
   box-shadow: var(--shadow-soft);
   transition: border-color 0.3s;
-  background: #2c3e50;
+  background: #0f3d2a;
 }
 
 .player-info.current-turn img {
-  border-color: var(--card-green);
+  border-color: var(--card-yellow);
+  box-shadow: 0 0 15px rgba(255, 221, 89, 0.4);
 }
 
 .player-name {
-  margin-top: 8px;
-  font-size: 0.85rem;
+  margin-top: 6px;
+  font-size: 0.8rem;
   font-weight: 600;
   letter-spacing: 0.5px;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.5);
+  max-width: 70px; /* Truncate long names */
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  text-align: center;
 }
 
 .card-count {
-  font-size: 0.75rem;
+  font-size: 0.7rem;
   color: var(--text-secondary);
   margin-top: 2px;
+  white-space: nowrap;
 }
 
 .uno-status {
   position: absolute;
-  top: -8px;
-  right: -8px;
+  top: -6px;
+  right: -6px;
   background: var(--card-red);
   color: white;
-  font-size: 0.7rem;
+  font-size: 0.65rem;
   font-weight: 800;
-  padding: 2px 6px;
+  padding: 2px 5px;
   border-radius: 4px;
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  box-shadow: 0 2px 4px rgba(0,0,0,0.3);
   display: none;
+  z-index: 10;
 }
 .player-info .uno-status:not(:empty) {
   display: block;
@@ -154,18 +182,28 @@ main {
   background-color: #fff;
   position: relative;
   box-shadow: var(--shadow-card);
-  transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out);
+  transition: transform 0.2s var(--ease-out), box-shadow 0.2s var(--ease-out), margin 0.2s var(--ease-out); /* Added margin transition */
   user-select: none;
   cursor: default;
   display: flex;
   align-items: center;
   justify-content: center;
   overflow: hidden;
+  will-change: transform;
+  z-index: 1; /* Default z-index */
+}
+
+/* Specific class for animating from a position */
+.card.animating {
+  transition: transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
+  z-index: 200 !important; /* Ensure animating cards are on top */
 }
 
 .card.back {
   background: var(--card-back);
-  background-image: linear-gradient(135deg, rgba(255,255,255,0.1) 0%, transparent 100%);
+  background-image: 
+    radial-gradient(circle at 50% 50%, rgba(255,255,255,0.05) 0%, transparent 60%),
+    repeating-linear-gradient(45deg, rgba(0,0,0,0.1) 0px, rgba(0,0,0,0.1) 2px, transparent 2px, transparent 10px);
   border: 2px solid rgba(255,255,255,0.1);
 }
 
@@ -173,17 +211,18 @@ main {
 .card.red { background-color: var(--card-red); color: white; }
 .card.blue { background-color: var(--card-blue); color: white; }
 .card.green { background-color: var(--card-green); color: white; }
-.card.yellow { background-color: var(--card-yellow); color: #2d3436; } /* Dark text for yellow */
-.card.wild, .card.wildDrawFour { background-color: var(--bg-main); color: white; border: 2px solid var(--text-secondary); }
+.card.yellow { background-color: var(--card-yellow); color: #2d3436; }
+.card.wild, .card.wildDrawFour { background-color: #2d3436; color: white; border: 2px solid var(--text-secondary); }
 
 /* Playable State */
 .card.playable {
   cursor: pointer;
-  transform: translateY(-8px);
+  /* transform: translateY(-8px); -- Removed default lift to avoid conflict with stack hover */
   box-shadow: var(--shadow-hover);
 }
 .card.playable:hover {
-  transform: translateY(-16px) scale(1.02);
+   /* transform handled in #yourHand context below */
+   /* z-index handled below */
 }
 
 /* Inner content for Number/Symbol */
@@ -191,8 +230,6 @@ main {
   font-size: 2rem;
   font-weight: 800;
   z-index: 2;
-  /* Removed the white circle background for a cleaner, modern look */
-  /* If we want the classic look, we can add a subtle shape behind */
 }
 
 /* Corner numbers */
@@ -212,7 +249,7 @@ main {
   background: linear-gradient(135deg, #2c3e50, #000);
 }
 .card.wild .inner, .card.wildDrawFour .inner {
-  font-size: 1.5rem; /* Slightly smaller for symbols like +4 */
+  font-size: 1.5rem;
 }
 
 /* --- Discard & Draw Piles --- */
@@ -227,38 +264,74 @@ main {
 }
 
 #discardPile {
-  /* No border by default, the card covers it. We can add a glow for the active color. */
+    /* Base for the pile */
 }
 #discardPile::before {
   content: '';
   position: absolute;
-  inset: -4px;
+  inset: -6px;
   border-radius: 16px;
   border: 2px solid var(--current-color, transparent);
-  opacity: 0.6;
+  opacity: 0.8;
   pointer-events: none;
   transition: border-color 0.3s;
+  box-shadow: 0 0 15px var(--current-color, transparent);
 }
 
 #drawPile {
-  background: rgba(255,255,255,0.03);
-  box-shadow: inset 0 0 20px rgba(0,0,0,0.2);
+  background: rgba(255,255,255,0.05);
+  box-shadow: inset 0 0 20px rgba(0,0,0,0.3);
+  border: 1px dashed rgba(255,255,255,0.2);
 }
 #drawPile .card {
   position: absolute;
+  /* Stack effect */
+  box-shadow: 1px 1px 0 #0a2f1f, 2px 2px 0 rgba(0,0,0,0.2);
 }
 
-/* --- Your Hand --- */
+/* --- Your Hand (STACKED/FAN STYLE) --- */
 #yourHand {
   display: flex;
   justify-content: center;
-  flex-wrap: wrap;
-  gap: 8px; /* Negative gap for overlap effect could be cool, but risky for touch. Keep gap small. */
-  padding: 20px 0;
+  flex-wrap: wrap; /* Wrap allowed if screen too small, but neg margin helps fit */
+  padding: 20px 0 40px 0; /* Extra bottom padding for hover lift */
   width: 100%;
-  min-height: 140px;
+  min-height: 160px;
   perspective: 1000px;
+  overflow: visible; /* Essential for cards to pop out */
 }
+
+/* Styles specifically for cards inside the hand */
+#yourHand .card {
+  margin-left: -40px; /* The overlap magic */
+  box-shadow: -2px 0 8px rgba(0,0,0,0.2); /* Shadow on the left to separate */
+  transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), margin 0.2s;
+  transform-origin: bottom center;
+}
+
+/* First card needs no negative margin */
+#yourHand .card:first-child {
+  margin-left: 0;
+}
+
+/* Hover effect for hand cards */
+#yourHand .card:hover {
+  transform: translateY(-25px) scale(1.1); /* Lift up */
+  z-index: 100; /* Bring to front */
+  box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+  margin-right: 0; /* Optional: push others aside slightly, but can be jumpy. Keeping 0 change usually better or subtle. */
+}
+
+/* Playable indication in hand */
+#yourHand .card.playable {
+  border: 2px solid #2ecc71; /* Subtle hint */
+  box-shadow: -2px 0 8px rgba(46, 204, 113, 0.3);
+}
+
+#yourHand .card.playable:hover {
+  box-shadow: 0 10px 25px rgba(46, 204, 113, 0.5);
+}
+
 
 /* --- Actions & Controls --- */
 #actionButtons {
@@ -277,13 +350,13 @@ button {
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s var(--ease-out);
-  box-shadow: 0 2px 4px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 6px rgba(0,0,0,0.2);
 }
 
 button:hover {
   background: var(--btn-hover);
   transform: translateY(-2px);
-  box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+  box-shadow: 0 6px 12px rgba(0,0,0,0.3);
 }
 
 button:active {
@@ -300,7 +373,14 @@ button:active {
   opacity: 1;
 }
 #unoButton.active {
-  box-shadow: 0 0 0 3px var(--card-green);
+  box-shadow: 0 0 0 3px var(--card-yellow);
+  animation: pulse 2s infinite;
+}
+
+@keyframes pulse {
+    0% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+    100% { transform: scale(1); }
 }
 
 /* --- Color Picker --- */
@@ -309,14 +389,14 @@ button:active {
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  background: rgba(33, 37, 41, 0.95);
+  background: rgba(10, 47, 31, 0.95);
   backdrop-filter: blur(10px);
   padding: 24px;
   border-radius: 20px;
   display: flex;
   gap: 16px;
-  box-shadow: 0 8px 32px rgba(0,0,0,0.5);
-  z-index: 100;
+  box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+  z-index: 1000; /* Increased to stay above overlapped cards */
   border: 1px solid rgba(255,255,255,0.1);
 }
 
@@ -324,12 +404,12 @@ button:active {
   width: 56px;
   height: 56px;
   border-radius: 50%;
-  border: none;
+  border: 2px solid rgba(255,255,255,0.2);
   cursor: pointer;
   transition: transform 0.2s var(--ease-out);
-  box-shadow: 0 4px 8px rgba(0,0,0,0.2);
+  box-shadow: 0 4px 8px rgba(0,0,0,0.3);
 }
-.color-btn:hover { transform: scale(1.1); }
+.color-btn:hover { transform: scale(1.15); border-color: white; }
 .color-btn.red { background: var(--card-red); }
 .color-btn.blue { background: var(--card-blue); }
 .color-btn.green { background: var(--card-green); }
@@ -343,22 +423,51 @@ button:active {
   color: var(--text-secondary);
   text-align: center;
   font-style: italic;
+  text-shadow: 0 1px 2px rgba(0,0,0,0.8);
 }
 
 /* --- Mobile Responsiveness --- */
 @media (max-width: 600px) {
   :root {
-    --card-width: 60px;
-    --card-height: 90px;
+    --card-width: 50px; /* Smaller cards on mobile */
+    --card-height: 75px;
+  }
+  
+  #playersSection {
+    gap: 8px; /* Tighter gap */
+    padding: 0 8px;
+    justify-content: center; /* Changed to center */
+  }
+
+  .player-info {
+    min-width: 44px;
+  }
+  
+  .player-info img {
+    width: 32px; /* Smaller avatars */
+    height: 32px;
+  }
+  
+  .player-name {
+    font-size: 0.65rem;
+    max-width: 50px;
+  }
+  
+  .card-count {
+    font-size: 0.6rem;
   }
   
   #centralPiles { gap: 16px; margin: 16px 0; }
   
-  .player-info img { width: 40px; height: 40px; }
-  .player-name { font-size: 0.75rem; }
+  /* Adjusted stacking for mobile */
+  #yourHand .card {
+    margin-left: -25px; /* Less overlap for smaller cards */
+  }
+  #yourHand { 
+      padding-top: 10px;
+      padding-bottom: 25px;
+  }
   
-  #yourHand { gap: 4px; }
-  
-  .card .inner { font-size: 1.5rem; }
-  .card .corner { font-size: 0.7rem; }
+  .card .inner { font-size: 1.2rem; }
+  .card .corner { font-size: 0.6rem; }
 }

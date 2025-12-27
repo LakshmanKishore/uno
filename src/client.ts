@@ -13,6 +13,15 @@ const wildColorPickerElement = document.getElementById("wildColorPicker")!
 const unoButtonElement = document.getElementById("unoButton")!
 const lastActionElement = document.getElementById("lastAction")!
 
+// State tracking for animations
+let previousHandIds = new Set<string>()
+let previousTopDiscardId: string | null = null
+let firstRender = true
+
+// Cache positions of cards from the previous frame to enable accurate "from" animations
+// Key: CardID, Value: DOMRect
+const previousCardPositions = new Map<string, DOMRect>()
+
 // Helper to create card HTML
 function createCardElement(
   card: Card,
@@ -23,6 +32,7 @@ function createCardElement(
   if (card.color) cardElement.classList.add(card.color)
   cardElement.classList.add(card.value)
   cardElement.dataset.cardId = card.id
+  cardElement.id = `card-${card.id}`
 
   // Map values to symbols/text
   let symbol = card.value as string
@@ -34,7 +44,7 @@ function createCardElement(
   else if (!isNaN(Number(card.value))) {
     // It's a number, leave it as is
   } else {
-    // Capitalize if it's text (rare in Uno, usually symbols, but just in case)
+    // Capitalize if it's text
     symbol = symbol.charAt(0).toUpperCase() + symbol.slice(1)
   }
 
@@ -42,7 +52,6 @@ function createCardElement(
   inner.className = "inner"
   inner.textContent = symbol
 
-  // Add small corner values for better readability
   const cornerTop = document.createElement("span")
   cornerTop.className = "corner top"
   cornerTop.textContent = symbol
@@ -71,11 +80,11 @@ function createCardElement(
 }
 
 function initUI(playerIds: PlayerId[], yourPlayerId: PlayerId | undefined) {
-  // Clear existing UI elements if any
   playersSection.innerHTML = ""
   yourHandElement.innerHTML = ""
   discardPileElement.innerHTML = ""
   drawPileElement.innerHTML = ""
+
   wildColorPickerElement.innerHTML = `
     <button class="color-btn red" data-color="red"></button>
     <button class="color-btn blue" data-color="blue"></button>
@@ -94,9 +103,8 @@ function initUI(playerIds: PlayerId[], yourPlayerId: PlayerId | undefined) {
       }
     })
   })
-  wildColorPickerElement.style.display = "none" // Hide initially
+  wildColorPickerElement.style.display = "none"
 
-  // Create player containers
   playerIds.forEach((playerId) => {
     const playerInfo = Rune.getPlayerInfo(playerId)
     const li = document.createElement("li")
@@ -114,7 +122,6 @@ function initUI(playerIds: PlayerId[], yourPlayerId: PlayerId | undefined) {
     playersSection.appendChild(li)
   })
 
-  // Action buttons
   actionButtonsElement.innerHTML = `
     <button id="drawCardButton">${Rune.t("Draw Card")}</button>
     <button id="passTurnButton" style="display:none;">${Rune.t("Pass Turn")}</button>
@@ -127,14 +134,69 @@ function initUI(playerIds: PlayerId[], yourPlayerId: PlayerId | undefined) {
   unoButtonElement.addEventListener("click", () => Rune.actions.callUno())
 }
 
+// Animation helper
+function animateElement(
+  element: HTMLElement,
+  startRect: DOMRect,
+  endRect: DOMRect
+) {
+  const deltaX = startRect.left - endRect.left
+  const deltaY = startRect.top - endRect.top
+
+  // 1. Instant setup (disable transition, move to start)
+  element.style.transition = "none"
+  element.style.transform = `translate(${deltaX}px, ${deltaY}px)`
+
+  // 2. Force reflow
+  void element.offsetWidth
+
+  requestAnimationFrame(() => {
+    // 3. Enable animation and move to target
+    element.style.transition = "" // Restore CSS transition
+    element.classList.add("animating") // Apply specific animation curve
+    element.style.transform = "" // Move to natural position (0,0)
+
+    // Cleanup after animation
+    element.addEventListener(
+      "transitionend",
+      () => {
+        element.classList.remove("animating")
+      },
+      { once: true }
+    )
+  })
+}
+
+// Helper to update card positions cache
+function updateCardPositionsCache() {
+  previousCardPositions.clear()
+
+  // Cache hand cards
+  const handCards = yourHandElement.querySelectorAll(".card")
+  handCards.forEach((el) => {
+    const cardId = (el as HTMLElement).dataset.cardId
+    if (cardId) {
+      previousCardPositions.set(cardId, el.getBoundingClientRect())
+    }
+  })
+
+  // Cache discard pile card (usually just the top one matters)
+  const discardCards = discardPileElement.querySelectorAll(".card")
+  discardCards.forEach((el) => {
+    const cardId = (el as HTMLElement).dataset.cardId
+    if (cardId) {
+      previousCardPositions.set(cardId, el.getBoundingClientRect())
+    }
+  })
+}
+
 Rune.initClient({
-  onChange: ({ game, yourPlayerId, players }) => {
+  onChange: ({ game, yourPlayerId, players, action }) => {
     const {
       deck,
       discardPile,
       players: gamePlayers,
       currentPlayerIndex,
-      // Removed 'direction' as it's not directly used for UI rendering in onChange
       currentColor,
       winner,
       drawnCard,
@@ -145,60 +207,92 @@ Rune.initClient({
     const yourPlayerState = gamePlayers.find((p) => p.id === yourPlayerId)!
     const isYourTurn = gamePlayers[currentPlayerIndex].id === yourPlayerId
 
-    // Initialize UI if not already done
     if (playersSection.children.length === 0) {
       initUI(Object.keys(players), yourPlayerId)
     }
 
-    // Last action message
     if (lastActionElement) {
       lastActionElement.textContent = lastAction || ""
     }
 
-    // Render Discard Pile
+    // --- RENDER DISCARD PILE ---
     discardPileElement.innerHTML = ""
+    let currentTopCardId: string | null = null
+
     if (discardPile.length > 0) {
       const topCard = discardPile[discardPile.length - 1]
-      // Use createCardElement but we might want to tweak it if we need to show the 'active' color for wilds
+      currentTopCardId = topCard.id
       const cardElement = createCardElement(topCard)
       discardPileElement.appendChild(cardElement)
 
-      // Update the discard pile's glow based on current color (useful for wilds)
-      const activeColor = topCard.color || currentColor
-      // Map internal color names to CSS variables if needed, or just class names
-      // We set a custom property on the parent to handle the glow border color
       let colorVar = "transparent"
+      const activeColor = topCard.color || currentColor
       if (activeColor === "red") colorVar = "var(--card-red)"
       if (activeColor === "blue") colorVar = "var(--card-blue)"
       if (activeColor === "green") colorVar = "var(--card-green)"
       if (activeColor === "yellow") colorVar = "var(--card-yellow)"
 
       discardPileElement.style.setProperty("--current-color", colorVar)
+
+      // Animation: Play Card (Hand -> Discard)
+      if (!firstRender && currentTopCardId !== previousTopDiscardId && action) {
+        let sourceRect: DOMRect | undefined = undefined
+
+        // 1. If YOU played the card, check our cache for where it was in your hand
+        if (action.playerId === yourPlayerId && action.name === "playCard") {
+          sourceRect = previousCardPositions.get(topCard.id)
+
+          // Fallback if cache missed (shouldn't happen if properly tracked)
+          if (!sourceRect) {
+            const handRect = yourHandElement.getBoundingClientRect()
+            sourceRect = {
+              left: handRect.left + handRect.width / 2 - 40,
+              top: handRect.top,
+            } as DOMRect
+          }
+        }
+        // 2. If OPPONENT played the card
+        else if (
+          action.playerId !== yourPlayerId &&
+          action.name === "playCard"
+        ) {
+          const playerEl = document.getElementById(`player-${action.playerId}`)
+          if (playerEl) {
+            sourceRect = playerEl.getBoundingClientRect()
+          }
+        }
+
+        if (sourceRect) {
+          const destRect = discardPileElement.getBoundingClientRect()
+          animateElement(cardElement, sourceRect, destRect)
+        }
+      }
     } else {
       discardPileElement.style.setProperty("--current-color", "transparent")
     }
 
-    // Render Draw Pile
+    // --- RENDER DRAW PILE ---
     drawPileElement.innerHTML = ""
     if (deck.length > 0 || drawnCard) {
-      // Show draw pile if there are cards in deck or one is drawn
       const drawCardPlaceholder = document.createElement("div")
       drawCardPlaceholder.className = "card back"
       drawPileElement.appendChild(drawCardPlaceholder)
     }
 
-    // Render Your Hand
+    // --- RENDER YOUR HAND ---
     yourHandElement.innerHTML = ""
     const allCardsInHand = [
       ...yourPlayerState.hand,
       ...(drawnCard ? [drawnCard] : []),
     ]
     const topDiscardCard = discardPile[discardPile.length - 1]
+    const currentHandIds = new Set<string>()
 
     allCardsInHand.forEach((card) => {
+      currentHandIds.add(card.id)
+
       let isPlayable = false
       if (isYourTurn && !winner) {
-        // If there's a draw stack, only +2 or +4 can be played, OR player must draw
         if (drawStack > 0) {
           isPlayable = card.value === "drawTwo" || card.value === "wildDrawFour"
         } else {
@@ -208,10 +302,30 @@ Rune.initClient({
             card.value === topDiscardCard.value
         }
       }
-      yourHandElement.appendChild(createCardElement(card, isPlayable))
+
+      const cardEl = createCardElement(card, isPlayable)
+      yourHandElement.appendChild(cardEl)
+
+      // Animation: Draw Card (Deck -> Hand)
+      // If card is NEW in hand and it wasn't there before
+      if (
+        !firstRender &&
+        !previousHandIds.has(card.id) &&
+        action &&
+        action.name === "drawCard" &&
+        action.playerId === yourPlayerId
+      ) {
+        const drawPileRect = drawPileElement.getBoundingClientRect()
+
+        // Wait for layout to settle for the new card in hand
+        requestAnimationFrame(() => {
+          const destRect = cardEl.getBoundingClientRect()
+          animateElement(cardEl, drawPileRect, destRect)
+        })
+      }
     })
 
-    // Render Player Info
+    // --- RENDER PLAYERS ---
     gamePlayers.forEach((playerState) => {
       const playerContainer = document.getElementById(
         `player-${playerState.id}`
@@ -233,17 +347,8 @@ Rune.initClient({
       }
     })
 
-    // Action button visibility
     const drawCardButton = document.getElementById("drawCardButton")!
     const passTurnButton = document.getElementById("passTurnButton")!
-
-    // Logic:
-    // If it's your turn, you haven't won, and you don't have a pending drawn card to play/pass: Show Draw
-    // If you have a drawn card (you just drew), show Pass (or Play is handled by card click)
-    // Actually the logic for buttons:
-    // If (isYourTurn)
-    //   If (drawnCard) -> Show "Pass Turn" (You can play the drawn card by clicking it, or pass)
-    //   Else -> Show "Draw Card"
 
     if (isYourTurn && !winner) {
       if (drawnCard) {
@@ -258,10 +363,6 @@ Rune.initClient({
       passTurnButton.style.display = "none"
     }
 
-    // Uno button logic
-    // Show if you have 1 or 2 cards (so you can call it before playing the second to last)
-    // actually standard UNO rules: Call UNO when playing your second-to-last card.
-    // Logic here checks <= 2 cards.
     if (
       isYourTurn &&
       !winner &&
@@ -273,18 +374,11 @@ Rune.initClient({
       unoButtonElement.style.display = "none"
     }
 
-    // Toggle active state for visual feedback
     if (yourPlayerState.hasCalledUno) {
       unoButtonElement.classList.add("active")
-      // Keep it visible maybe? Or hide it? Usually you call it once.
-      // If we want to show "You called UNO", we can disable it or style it.
-      // For now let's hide it to avoid confusion or keep it as status.
-      // The prompt says "UI should feel calm and predictable".
-      // If I called it, I don't need to call it again.
       unoButtonElement.style.display = "none"
     }
 
-    // Handle game over
     if (winner) {
       lastActionElement.textContent = `${winner} won the game!`
       actionButtonsElement.style.display = "none"
@@ -293,5 +387,16 @@ Rune.initClient({
     } else {
       actionButtonsElement.style.display = "flex"
     }
+
+    // Update state for next render
+    previousHandIds = currentHandIds
+    previousTopDiscardId = currentTopCardId
+    firstRender = false
+
+    // IMPORTANT: Update cache of card positions AFTER the DOM is fully rendered and browser has laid it out.
+    // We use setTimeout 0 or RAF to ensure we capture the state *after* the current painting.
+    requestAnimationFrame(() => {
+      updateCardPositionsCache()
+    })
   },
 })
