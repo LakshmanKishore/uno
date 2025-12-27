@@ -1,11 +1,25 @@
+:root {
+  --color-red: #e74c3c;
+  --color-blue: #3498db;
+  --color-green: #27ae60;
+  --color-yellow: #f1c40f;
+  --color-wild: #8e44ad; /* Purple for wild cards */
+  --card-width: 80px;
+  --card-height: 120px;
+  --card-border-radius: 10px;
+  --card-font-size: 32px;
+}
+
 body,
 html {
   padding: 0;
   margin: 0;
   background: #333;
-  color: #e6e6e6;
-  font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica,
-    Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  color: #ecf0f1;
+  font-family:
+    -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial,
+    sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";
+  overflow: hidden; /* Prevent scrolling */
 }
 
 main {
@@ -13,207 +27,369 @@ main {
   flex-direction: column;
   height: 100vh;
   align-items: center;
-  justify-content: space-around;
+  justify-content: space-between;
+  padding: 10px;
+  box-sizing: border-box;
 }
 
-#board {
-  width: 90vw;
-  max-width: min(90vh, 600px);
-  aspect-ratio: 1;
-  display: grid;
-  grid-template-columns: repeat(3, 1fr);
-}
-
-@keyframes right {
-  0%,
-  100% {
-    transform: translate(-20px);
-  }
-  50% {
-    transform: translate(20px);
-  }
-}
-
-@keyframes left {
-  0%,
-  100% {
-    transform: translate(20px);
-  }
-  50% {
-    transform: translate(-20px);
-  }
-}
-
-button {
-  position: relative;
-  background: transparent;
-  border: 1.3vw solid #e6e6e620;
-  border-left: 0;
-  border-top: 0;
-  width: 100%;
-  aspect-ratio: 1;
-  padding: 0;
-  margin: 0;
-}
-
-button:before {
-  position: absolute;
-  top: max(8%, 8px);
-  left: max(8%, 8px);
-  bottom: max(8%, 8px);
-  right: max(8%, 8px);
-  content: "";
-  display: block;
-  background-repeat: no-repeat;
-  background-size: contain;
-  background-position: center;
-  transition: opacity 1s ease-out;
-}
-
-button[dim="true"]:before {
-  opacity: 0.2;
-  scale: 0.8;
-}
-
-@keyframes scale-in {
-  0% {
-    transform: scale(0);
-  }
-  100% {
-    transform: scale(1);
-  }
-}
-
-button[player="0"]:before {
-  background-image: url(./assets/x.svg);
-  animation: scale-in 0.2s ease-in-out;
-}
-
-button[player="1"]:before {
-  background-image: url(./assets/o.svg);
-  animation: scale-in 0.2s ease-in-out;
-}
-
-button:nth-child(3n) {
-  border-right: 0;
-}
-
-button:nth-child(7),
-button:nth-child(8),
-button:nth-child(9) {
-  border-bottom: 0;
-}
-
-button:not([disabled]) {
-  cursor: pointer;
-}
-
-@keyframes tap-to-play {
-  0% {
-    transform: scale(0.7);
-  }
-  50% {
-    transform: scale(1);
-  }
-  100% {
-    transform: scale(0.7);
-  }
-}
-
-#board.initial button:nth-child(5)::before {
-  opacity: 1;
-  content: attr(data-text);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  position: absolute;
-  top: 0;
-  left: 0;
-  width: 100%;
-  height: 100%;
-
-  text-align: center;
-  font-size: 8vw;
-  font-weight: 700;
-  line-height: 11vw;
-  letter-spacing: 0vw;
-
-  background: linear-gradient(90deg, #cb89fc 0.24%, #fea9ab 96.17%);
-  background-clip: text;
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-
-  animation: tap-to-play 1.5s ease-in-out infinite;
-}
-
-@media (hover: hover) {
-  button:not([disabled]):after {
-    content: "";
-    display: block;
-    position: absolute;
-    top: 50%;
-    left: 50%;
-    margin-top: -10%;
-    margin-left: -10%;
-    width: 20%;
-    border-radius: 50%;
-    background: #e6e6e6;
-    aspect-ratio: 1;
-    transition: all 0.15s ease-in-out;
-    scale: 0;
-  }
-
-  button:hover:after {
-    scale: 1;
-  }
-}
-
-ul {
-  list-style: none;
-  font-size: min(14px, 3vw);
-  padding: 0;
-  font-weight: bold;
-  display: flex;
-  width: 100%;
-  justify-content: space-around;
-}
-
-li {
-  opacity: 0.5;
-  line-height: 1.7;
+#gameBoard {
   display: flex;
   flex-direction: column;
   align-items: center;
-  transition: opacity 0.2s ease-in-out;
-  text-align: center;
+  width: 100%;
+  max-width: 800px;
+  flex-grow: 1;
+  justify-content: space-around;
 }
 
-li img {
-  width: 20vw;
-  height: 20vw;
-  margin-top: 6.4vw;
-  margin-bottom: 2.1vw;
+#playersSection {
+  list-style: none;
+  padding: 0;
+  display: flex;
+  justify-content: space-around;
+  width: 100%;
+  margin-top: 10px;
+  margin-bottom: 10px;
 }
 
-li[your-turn="true"] {
+.player-info {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  opacity: 0.7;
+  transition: opacity 0.3s ease-in-out;
+  position: relative;
+}
+
+.player-info.current-turn {
   opacity: 1;
+  transform: scale(1.05);
 }
 
-li:before {
-  content: "";
-  display: inline-block;
-  vertical-align: middle;
-  width: 13vw;
-  height: 13vw;
-  background-repeat: no-repeat;
-  background-size: contain;
-  background-position: center;
+.player-info img {
+  width: 50px;
+  height: 50px;
+  border-radius: 50%;
+  border: 2px solid transparent;
+  transition: border-color 0.3s ease-in-out;
 }
 
-li[player="0"]:before {
-  background-image: url(./assets/x.svg);
+.player-info.current-turn img {
+  border-color: #2ecc71; /* Green border for current player */
 }
 
-li[player="1"]:before {
-  background-image: url(./assets/o.svg);
+.player-name {
+  font-size: 0.8em;
+  font-weight: bold;
+  margin-top: 5px;
+}
+
+.card-count {
+  font-size: 0.7em;
+  color: #bdc3c7;
+}
+
+.uno-status {
+  font-weight: bold;
+  color: var(--color-red);
+  font-size: 0.9em;
+  position: absolute;
+  top: -10px;
+  right: -10px;
+  background: #fff;
+  padding: 2px 5px;
+  border-radius: 5px;
+  display: none;
+}
+
+.player-info .uno-status:not(:empty) {
+  display: block;
+}
+
+#centralPiles {
+  display: flex;
+  gap: 20px;
+  margin: 20px 0;
+}
+
+#discardPile,
+#drawPile {
+  width: var(--card-width);
+  height: var(--card-height);
+  border-radius: var(--card-border-radius);
+  background-color: rgba(0, 0, 0, 0.3);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: var(--card-font-size);
+  color: #fff;
+  position: relative;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+}
+
+#discardPile {
+  border: 3px solid var(--current-color, transparent);
+  transition: border-color 0.3s ease-in-out;
+}
+
+#discardPile .card {
+  position: absolute;
+  transform: rotate(var(--rotation, 0deg));
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+#drawPile .card.back {
+  background-color: #2c3e50; /* Dark blue-grey for card back */
+  position: absolute;
+}
+
+#yourHand {
+  display: flex;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: 5px;
+  padding: 10px 0;
+  max-width: 100%;
+  min-height: calc(var(--card-height) + 20px); /* Ensure space for hand */
+}
+
+.card {
+  width: var(--card-width);
+  height: var(--card-height);
+  background-color: #fff;
+  border-radius: var(--card-border-radius);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: var(--card-font-size);
+  color: #333;
+  position: relative;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+  cursor: pointer;
+  transition:
+    transform 0.1s ease-out,
+    box-shadow 0.1s ease-out;
+  user-select: none;
+}
+
+.card:hover:not(.playable) {
+  transform: translateY(-5px);
+  box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+}
+
+.card.playable {
+  border: 3px solid #2ecc71; /* Green border for playable cards */
+  cursor: pointer;
+}
+
+.card.playable:hover {
+  transform: translateY(-10px) scale(1.05);
+  box-shadow: 0 8px 16px rgba(0, 0, 0, 0.4);
+}
+
+.card .inner {
+  width: 80%;
+  height: 80%;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background-color: #fff; /* Inner circle for colored cards */
+  position: relative;
+  z-index: 1;
+}
+
+.card.red {
+  background-color: var(--color-red);
+}
+.card.blue {
+  background-color: var(--color-blue);
+}
+.card.green {
+  background-color: var(--color-green);
+}
+.card.yellow {
+  background-color: var(--color-yellow);
+}
+.card.wild {
+  background-color: var(--color-wild);
+}
+
+/* Card value styling */
+.card.red .inner {
+  color: var(--color-red);
+}
+.card.blue .inner {
+  color: var(--color-blue);
+}
+.card.green .inner {
+  color: var(--color-green);
+}
+.card.yellow .inner {
+  color: var(--color-yellow);
+}
+
+.card.wild .inner,
+.card.wildDrawFour .inner {
+  background: linear-gradient(
+    45deg,
+    var(--color-red),
+    var(--color-blue),
+    var(--color-green),
+    var(--color-yellow)
+  );
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  color: var(--color-wild); /* Fallback */
+}
+
+.card.skip:before,
+.card.reverse:before,
+.card.drawTwo:before {
+  content: "↔";
+}
+.card.skip .inner:before {
+  content: "Ø";
+}
+.card.reverse .inner:before {
+  content: "⇄";
+}
+.card.drawTwo .inner:before {
+  content: "+2";
+  font-size: 0.7em;
+}
+.card.wild .inner:before {
+  content: "W";
+}
+.card.wildDrawFour .inner:before {
+  content: "+4";
+  font-size: 0.7em;
+}
+
+/* General Action buttons */
+#actionButtons {
+  display: flex;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+#actionButtons button,
+#unoButton {
+  padding: 10px 20px;
+  font-size: 1em;
+  font-weight: bold;
+  border: none;
+  border-radius: 8px;
+  cursor: pointer;
+  background-color: #34495e;
+  color: #ecf0f1;
+  transition:
+    background-color 0.2s ease-in-out,
+    transform 0.1s ease-in-out;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+}
+
+#actionButtons button:hover,
+#unoButton:hover {
+  background-color: #2c3e50;
+  transform: translateY(-2px);
+}
+
+#unoButton {
+  background-color: var(--color-red);
+  margin-top: 10px;
+}
+
+#unoButton:hover {
+  background-color: #c0392b;
+}
+
+#unoButton.active {
+  border: 3px solid #2ecc71; /* Green border when UNO is called */
+}
+
+/* Wild Color Picker */
+#wildColorPicker {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  background-color: rgba(0, 0, 0, 0.8);
+  padding: 20px;
+  border-radius: 15px;
+  display: flex;
+  gap: 15px;
+  z-index: 1000;
+  box-shadow: 0 0 20px rgba(0, 0, 0, 0.7);
+}
+
+#wildColorPicker .color-btn {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  border: 3px solid #fff;
+  cursor: pointer;
+  transition:
+    transform 0.1s ease-in-out,
+    border-color 0.1s ease-in-out;
+}
+
+#wildColorPicker .color-btn.red {
+  background-color: var(--color-red);
+}
+#wildColorPicker .color-btn.blue {
+  background-color: var(--color-blue);
+}
+#wildColorPicker .color-btn.green {
+  background-color: var(--color-green);
+}
+#wildColorPicker .color-btn.yellow {
+  background-color: var(--color-yellow);
+}
+
+#wildColorPicker .color-btn:hover {
+  transform: scale(1.1);
+  border-color: #2ecc71;
+}
+
+#lastAction {
+  margin-top: 10px;
+  font-size: 0.9em;
+  color: #bdc3c7;
+  text-align: center;
+  min-height: 1.2em; /* Reserve space */
+}
+
+/* Responsive adjustments */
+@media (max-width: 600px) {
+  :root {
+    --card-width: 60px;
+    --card-height: 90px;
+    --card-font-size: 24px;
+  }
+
+  .player-info img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .player-name {
+    font-size: 0.7em;
+  }
+
+  .card-count {
+    font-size: 0.6em;
+  }
+
+  #actionButtons button,
+  #unoButton {
+    padding: 8px 15px;
+    font-size: 0.9em;
+  }
+
+  #wildColorPicker .color-btn {
+    width: 45px;
+    height: 45px;
+  }
 }

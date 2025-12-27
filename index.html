@@ -6,32 +6,46 @@
       name="viewport"
       content="width=device-width, initial-scale=1, minimum-scale=1, maximum-scale=1"
     />
-    <title>Tic Tac Toe</title>
+    <title>UNO</title>
     <script id="rune-translation-data" type="application/json">
       {
         "en": {
           "(You)": "(You)",
-          "tap to play": "tap to play"
+          "Draw Card": "Draw Card",
+          "Pass Turn": "Pass Turn"
         },
         "es": {
           "(You)": "(Tú)",
-          "tap to play": "toca para jugar"
+          "Draw Card": "Robar Carta",
+          "Pass Turn": "Pasar Turno"
         },
         "pt": {
           "(You)": "(Você)",
-          "tap to play": "toque para jogar"
+          "Draw Card": "Comprar Carta",
+          "Pass Turn": "Passar Vez"
         },
         "ru": {
           "(You)": "(Вы)",
-          "tap to play": "нажмите, чтобы играть"
+          "Draw Card": "Взять карту",
+          "Pass Turn": "Пропустить ход"
         }
       }
     </script>
   </head>
   <body>
     <main>
-      <div id="board" class="initial"></div>
       <ul id="playersSection"></ul>
+      <div id="gameBoard">
+        <div id="centralPiles">
+          <div id="discardPile"></div>
+          <div id="drawPile"></div>
+        </div>
+        <div id="wildColorPicker"></div>
+        <div id="lastAction"></div>
+        <div id="actionButtons"></div>
+        <button id="unoButton">UNO</button>
+      </div>
+      <div id="yourHand"></div>
     </main>
     <script type="module" src="/src/logic.ts"></script>
     <script type="module" src="/src/client.ts"></script>
