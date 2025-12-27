@@ -283,16 +283,22 @@ Rune.initLogic({
 
       game.discardPile.push(card)
       game.currentColor = card.color === null ? selectedColor! : card.color
-      game.lastAction = `${player.id} played ${card.value === "wild" || card.value === "wildDrawFour" ? `Wild (${game.currentColor})` : card.value} ${card.color || ""}`
+      game.lastAction = `<PLAYER_NAME:${player.id}> played ${card.value === "wild" || card.value === "wildDrawFour" ? `Wild (${game.currentColor})` : card.value} ${card.color || ""}`
 
       if (player.hand.length === 0) {
         game.winner = playerId
-        Rune.gameOver({ players: { [playerId]: "WON" } })
+        const gameOverOptions: { players: Record<string, "WON" | "LOST"> } = {
+          players: {},
+        }
+        for (const p of game.players) {
+          gameOverOptions.players[p.id] = p.id === playerId ? "WON" : "LOST"
+        }
+        Rune.gameOver(gameOverOptions)
         return
       }
 
       if (player.hand.length === 1 && !player.hasCalledUno) {
-        game.lastAction += ` (Forgot UNO! ${player.id} draws 2)`
+        game.lastAction += ` (Forgot UNO! <PLAYER_NAME:${player.id}> draws 2)`
         ensureDeck(game)
         for (let i = 0; i < 2; i++) {
           ensureDeck(game)
@@ -340,7 +346,7 @@ Rune.initLogic({
         )
 
         if (!canStackDraw) {
-          game.lastAction += ` (${currentPlayer.id} draws ${game.drawStack} cards)`
+          game.lastAction += ` (<PLAYER_NAME:${currentPlayer.id}> draws ${game.drawStack} cards)`
           ensureDeck(game)
           for (let i = 0; i < game.drawStack; i++) {
             ensureDeck(game)
@@ -365,7 +371,7 @@ Rune.initLogic({
 
       if (game.currentPlayerIndex !== playerIndex) throw Rune.invalidAction()
       if (game.drawStack > 0) {
-        game.lastAction += ` (${player.id} draws ${game.drawStack} cards)`
+        game.lastAction += ` (<PLAYER_NAME:${player.id}> draws ${game.drawStack} cards)`
         ensureDeck(game)
         for (let i = 0; i < game.drawStack; i++) {
           ensureDeck(game)
@@ -389,7 +395,7 @@ Rune.initLogic({
       if (!newCard) throw Rune.invalidAction()
 
       game.drawnCard = newCard
-      game.lastAction = `${player.id} drew a card.`
+      game.lastAction = `<PLAYER_NAME:${player.id}> drew a card.`
       player.hasCalledUno = false
     },
 
@@ -405,7 +411,7 @@ Rune.initLogic({
       player.hasCalledUno = false
 
       game.drawnCard = null
-      game.lastAction = `${player.id} passed their turn.`
+      game.lastAction = `<PLAYER_NAME:${player.id}> passed their turn.`
       game.currentPlayerIndex = getNextPlayerIndex(
         game.currentPlayerIndex,
         game.direction,
@@ -424,7 +430,7 @@ Rune.initLogic({
         if (player.hand.length > 2) throw Rune.invalidAction()
 
         player.hasCalledUno = true
-        game.lastAction = `${player.id} called UNO!`
+        game.lastAction = `<PLAYER_NAME:${player.id}> called UNO!`
       } else {
         throw Rune.invalidAction()
       }
@@ -457,7 +463,7 @@ Rune.initLogic({
         hasCalledUno: false,
       })
 
-      game.lastAction = `${playerId} joined.`
+      game.lastAction = `<PLAYER_NAME:${playerId}> joined.`
     },
     playerLeft: (playerId, { game }) => {
       const idx = game.players.findIndex((p) => p.id === playerId)
@@ -489,7 +495,7 @@ Rune.initLogic({
           // Note: game.drawStack persists to the next player
         }
 
-        game.lastAction = `${playerId} left.`
+        game.lastAction = `<PLAYER_NAME:${playerId}> left.`
       }
     },
   },

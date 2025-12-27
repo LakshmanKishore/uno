@@ -13,6 +13,49 @@ const wildColorPickerElement = document.getElementById("wildColorPicker")!
 const unoButtonElement = document.getElementById("unoButton")!
 const lastActionElement = document.getElementById("lastAction")!
 
+// Wrap UNO button
+const unoContainer = document.createElement("div")
+unoContainer.className = "uno-button-container"
+unoButtonElement.parentNode?.insertBefore(unoContainer, unoButtonElement)
+unoContainer.appendChild(unoButtonElement)
+
+const unoHint = document.createElement("div")
+unoHint.className = "uno-hint"
+unoHint.textContent = "Click BEFORE playing!"
+unoContainer.insertBefore(unoHint, unoButtonElement)
+
+// Help Button Logic
+const helpButton = document.createElement("button")
+helpButton.id = "helpButton"
+helpButton.textContent = "?"
+document.body.appendChild(helpButton)
+
+const rulesModal = document.createElement("div")
+rulesModal.id = "rulesModal"
+rulesModal.innerHTML = `
+    <div class="rules-content">
+        <h2>How to Play UNO</h2>
+        <ul>
+            <li>Match the top card on the discard pile by color, number, or symbol.</li>
+            <li>Use Action cards (Skip, Reverse, Draw Two) to shake up the game.</li>
+            <li>Wild cards can be played on any card to change the color.</li>
+            <li>Wild Draw Four changes the color and makes the next player draw 4 cards.</li>
+            <li><strong>IMPORTANT:</strong> If you have 2 cards left, you MUST click the "UNO" button <em>before</em> playing your second-to-last card.</li>
+            <li>If you forget to call UNO, you will be forced to draw 2 penalty cards!</li>
+            <li>First player to get rid of all their cards wins!</li>
+        </ul>
+        <button class="close-rules">Close</button>
+    </div>
+`
+document.body.appendChild(rulesModal)
+
+helpButton.addEventListener("click", () => {
+  rulesModal.classList.add("visible")
+})
+rulesModal.querySelector(".close-rules")!.addEventListener("click", () => {
+  rulesModal.classList.remove("visible")
+})
+
 // State tracking for animations
 let previousHandIds = new Set<string>()
 let previousTopDiscardId: string | null = null
@@ -212,7 +255,17 @@ Rune.initClient({
     }
 
     if (lastActionElement) {
-      lastActionElement.textContent = lastAction || ""
+      let formattedLastAction = lastAction || ""
+      // Regex to find all instances of <PLAYER_NAME:PLAYER_ID>
+      const playerPlaceholderRegex = /<PLAYER_NAME:([^>]+)>/g
+      formattedLastAction = formattedLastAction.replace(
+        playerPlaceholderRegex,
+        (match, playerId) => {
+          const playerInfo = Rune.getPlayerInfo(playerId)
+          return playerInfo ? playerInfo.displayName : playerId
+        }
+      )
+      lastActionElement.textContent = formattedLastAction
     }
 
     // --- RENDER DISCARD PILE ---
@@ -326,10 +379,30 @@ Rune.initClient({
     })
 
     // --- RENDER PLAYERS ---
+    // 1. Sync: Add missing players
     gamePlayers.forEach((playerState) => {
-      const playerContainer = document.getElementById(
-        `player-${playerState.id}`
-      )
+      let playerContainer = document.getElementById(`player-${playerState.id}`)
+
+      if (!playerContainer) {
+        const playerInfo = players[playerState.id] // Use Rune player info
+        if (playerInfo) {
+          playerContainer = document.createElement("li")
+          playerContainer.id = `player-${playerState.id}`
+          playerContainer.className = "player-info"
+          playerContainer.innerHTML = `
+            <img src="${playerInfo.avatarUrl}" alt="${playerInfo.displayName}" />
+            <span class="player-name">${playerInfo.displayName}</span>
+            <span class="card-count"></span>
+            <span class="uno-status"></span>
+          `
+          if (playerState.id === yourPlayerId) {
+            playerContainer.classList.add("you")
+          }
+          playersSection.appendChild(playerContainer)
+        }
+      }
+
+      // Update UI for this player
       if (playerContainer) {
         const isCurrentPlayer =
           playerState.id === gamePlayers[currentPlayerIndex].id
@@ -344,6 +417,15 @@ Rune.initClient({
 
         playerContainer.querySelector(".uno-status")!.textContent =
           playerState.hasCalledUno ? "UNO!" : ""
+      }
+    })
+
+    // 2. Sync: Remove left players
+    const currentPlayerIds = new Set(gamePlayers.map((p) => p.id))
+    Array.from(playersSection.children).forEach((child) => {
+      const id = child.id.replace("player-", "")
+      if (!currentPlayerIds.has(id)) {
+        playersSection.removeChild(child)
       }
     })
 
@@ -369,21 +451,21 @@ Rune.initClient({
       yourPlayerState.hand.length <= 2 &&
       !yourPlayerState.hasCalledUno
     ) {
-      unoButtonElement.style.display = "block"
+      unoContainer.style.display = "flex"
     } else {
-      unoButtonElement.style.display = "none"
+      unoContainer.style.display = "none"
     }
 
     if (yourPlayerState.hasCalledUno) {
       unoButtonElement.classList.add("active")
-      unoButtonElement.style.display = "none"
+      unoContainer.style.display = "none"
     }
 
     if (winner) {
       lastActionElement.textContent = `${winner} won the game!`
       actionButtonsElement.style.display = "none"
       wildColorPickerElement.style.display = "none"
-      unoButtonElement.style.display = "none"
+      unoContainer.style.display = "none"
     } else {
       actionButtonsElement.style.display = "flex"
     }
@@ -394,7 +476,6 @@ Rune.initClient({
     firstRender = false
 
     // IMPORTANT: Update cache of card positions AFTER the DOM is fully rendered and browser has laid it out.
-    // We use setTimeout 0 or RAF to ensure we capture the state *after* the current painting.
     requestAnimationFrame(() => {
       updateCardPositionsCache()
     })

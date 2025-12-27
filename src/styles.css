@@ -12,9 +12,9 @@
   --card-back: #0f3d2a; /* Darker green for card back */
 
   /* Dimensions */
-  --card-width: 80px;
-  --card-height: 120px;
-  --card-radius: 12px;
+  --card-width: 100px;
+  --card-height: 150px;
+  --card-radius: 14px;
   
   /* Text */
   --text-primary: #ecf0f1;
@@ -45,13 +45,14 @@ body, html {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   overflow: hidden;
   -webkit-font-smoothing: antialiased;
+  font-size: 16px;
 }
 
 main {
   display: flex;
   flex-direction: column;
   height: 100%;
-  max-width: 1200px;
+  max-width: 1400px; /* Increased */
   margin: 0 auto;
   padding: 20px;
   justify-content: space-between;
@@ -67,7 +68,7 @@ main {
   flex-direction: row;
   justify-content: center;
   align-items: flex-start;
-  gap: 12px;
+  gap: 16px;
   width: 100%;
   overflow-x: auto;
   flex-wrap: nowrap;
@@ -93,7 +94,7 @@ main {
   opacity: 0.6;
   transition: opacity 0.3s var(--ease-out), transform 0.3s var(--ease-out);
   position: relative;
-  min-width: 50px; /* Minimum width to prevent crushing */
+  min-width: 60px; /* Minimum width to prevent crushing */
   flex-shrink: 1; /* Allow shrinking */
 }
 
@@ -103,8 +104,8 @@ main {
 }
 
 .player-info img {
-  width: 42px; /* Slightly smaller default */
-  height: 42px;
+  width: 54px; /* Slightly larger default */
+  height: 54px;
   border-radius: 50%;
   border: 2px solid rgba(255,255,255,0.1);
   box-shadow: var(--shadow-soft);
@@ -118,12 +119,12 @@ main {
 }
 
 .player-name {
-  margin-top: 6px;
-  font-size: 0.8rem;
+  margin-top: 8px;
+  font-size: 0.9rem;
   font-weight: 600;
   letter-spacing: 0.5px;
   text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-  max-width: 70px; /* Truncate long names */
+  max-width: 90px; /* Truncate long names */
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
@@ -131,9 +132,9 @@ main {
 }
 
 .card-count {
-  font-size: 0.7rem;
+  font-size: 0.8rem;
   color: var(--text-secondary);
-  margin-top: 2px;
+  margin-top: 4px;
   white-space: nowrap;
 }
 
@@ -143,7 +144,7 @@ main {
   right: -6px;
   background: var(--card-red);
   color: white;
-  font-size: 0.65rem;
+  font-size: 0.75rem;
   font-weight: 800;
   padding: 2px 5px;
   border-radius: 4px;
@@ -168,10 +169,10 @@ main {
 
 #centralPiles {
   display: flex;
-  gap: 32px;
+  gap: 48px;
   align-items: center;
   justify-content: center;
-  margin: 32px 0;
+  margin: 40px 0;
 }
 
 /* --- Cards --- */
@@ -227,7 +228,7 @@ main {
 
 /* Inner content for Number/Symbol */
 .card .inner {
-  font-size: 2rem;
+  font-size: 2.5rem;
   font-weight: 800;
   z-index: 2;
 }
@@ -235,9 +236,9 @@ main {
 /* Corner numbers */
 .card .corner {
   position: absolute;
-  font-size: 0.9rem;
+  font-size: 1.1rem;
   font-weight: 700;
-  padding: 4px 6px;
+  padding: 6px 8px;
   line-height: 1;
 }
 
@@ -249,7 +250,7 @@ main {
   background: linear-gradient(135deg, #2c3e50, #000);
 }
 .card.wild .inner, .card.wildDrawFour .inner {
-  font-size: 1.5rem;
+  font-size: 2rem;
 }
 
 /* --- Discard & Draw Piles --- */
@@ -294,16 +295,16 @@ main {
   display: flex;
   justify-content: center;
   flex-wrap: wrap; /* Wrap allowed if screen too small, but neg margin helps fit */
-  padding: 20px 0 40px 0; /* Extra bottom padding for hover lift */
+  padding: 30px 0 50px 0; /* Extra bottom padding for hover lift */
   width: 100%;
-  min-height: 160px;
+  min-height: 180px;
   perspective: 1000px;
   overflow: visible; /* Essential for cards to pop out */
 }
 
 /* Styles specifically for cards inside the hand */
 #yourHand .card {
-  margin-left: -40px; /* The overlap magic */
+  margin-left: -50px; /* Increased overlap for larger cards */
   box-shadow: -2px 0 8px rgba(0,0,0,0.2); /* Shadow on the left to separate */
   transition: transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1), margin 0.2s;
   transform-origin: bottom center;
@@ -316,9 +317,9 @@ main {
 
 /* Hover effect for hand cards */
 #yourHand .card:hover {
-  transform: translateY(-25px) scale(1.1); /* Lift up */
+  transform: translateY(-30px) scale(1.1); /* Lift up */
   z-index: 100; /* Bring to front */
-  box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+  box-shadow: 0 12px 24px rgba(0,0,0,0.4);
   margin-right: 0; /* Optional: push others aside slightly, but can be jumpy. Keeping 0 change usually better or subtle. */
 }
 
@@ -344,9 +345,9 @@ button {
   background: var(--btn-bg);
   color: var(--text-primary);
   border: none;
-  padding: 12px 24px;
-  border-radius: 8px;
-  font-size: 0.95rem;
+  padding: 14px 28px;
+  border-radius: 10px;
+  font-size: 1.1rem;
   font-weight: 600;
   cursor: pointer;
   transition: all 0.2s var(--ease-out);
@@ -363,9 +364,35 @@ button:active {
   transform: translateY(0);
 }
 
+/* UNO Button Area */
+.uno-button-container {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    margin-top: 16px;
+}
+
+.uno-hint {
+    color: var(--card-yellow);
+    font-size: 0.8rem;
+    font-weight: bold;
+    margin-bottom: 5px;
+    background: rgba(0,0,0,0.5);
+    padding: 2px 6px;
+    border-radius: 4px;
+    animation: flash 2s infinite;
+    white-space: nowrap;
+    pointer-events: none;
+}
+@keyframes flash {
+    0%, 100% { opacity: 0.8; }
+    50% { opacity: 1; text-shadow: 0 0 5px var(--card-yellow); }
+}
+
 #unoButton {
   background-color: var(--card-red);
-  margin-top: 16px;
+  margin-top: 0;
   opacity: 0.9;
 }
 #unoButton:hover {
@@ -401,8 +428,8 @@ button:active {
 }
 
 .color-btn {
-  width: 56px;
-  height: 56px;
+  width: 64px;
+  height: 64px;
   border-radius: 50%;
   border: 2px solid rgba(255,255,255,0.2);
   cursor: pointer;
@@ -418,19 +445,79 @@ button:active {
 /* --- Info Text --- */
 #lastAction {
   margin-top: 16px;
-  height: 20px;
-  font-size: 0.9rem;
+  height: 24px;
+  font-size: 1rem;
   color: var(--text-secondary);
   text-align: center;
   font-style: italic;
   text-shadow: 0 1px 2px rgba(0,0,0,0.8);
 }
 
+/* --- Help Button --- */
+#helpButton {
+    position: absolute;
+    top: 10px;
+    right: 10px;
+    background: rgba(255,255,255,0.1);
+    color: white;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: bold;
+    cursor: pointer;
+    border: 1px solid rgba(255,255,255,0.2);
+    z-index: 1000;
+}
+#helpButton:hover {
+    background: rgba(255,255,255,0.2);
+}
+
+/* Modal */
+#rulesModal {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background: rgba(0,0,0,0.8);
+    z-index: 2000;
+    display: none;
+    align-items: center;
+    justify-content: center;
+}
+#rulesModal.visible {
+    display: flex;
+}
+.rules-content {
+    background: #1a4c35;
+    padding: 24px;
+    border-radius: 12px;
+    max-width: 500px;
+    width: 90%;
+    max-height: 80vh;
+    overflow-y: auto;
+    color: #ecf0f1;
+    border: 1px solid rgba(255,255,255,0.1);
+    box-shadow: 0 20px 50px rgba(0,0,0,0.5);
+}
+.rules-content h2 { margin-top: 0; }
+.rules-content ul { padding-left: 20px; }
+.rules-content li { margin-bottom: 8px; }
+.close-rules {
+    margin-top: 16px;
+    background: #0f3d2a;
+    width: 100%;
+}
+
+
 /* --- Mobile Responsiveness --- */
 @media (max-width: 600px) {
   :root {
-    --card-width: 50px; /* Smaller cards on mobile */
-    --card-height: 75px;
+    --card-width: 60px; /* Smaller cards on mobile */
+    --card-height: 90px;
   }
   
   #playersSection {
@@ -440,34 +527,40 @@ button:active {
   }
 
   .player-info {
-    min-width: 44px;
+    min-width: 48px;
   }
   
   .player-info img {
-    width: 32px; /* Smaller avatars */
-    height: 32px;
+    width: 36px; /* Smaller avatars */
+    height: 36px;
   }
   
   .player-name {
-    font-size: 0.65rem;
-    max-width: 50px;
+    font-size: 0.7rem;
+    max-width: 60px;
   }
   
   .card-count {
-    font-size: 0.6rem;
+    font-size: 0.7rem;
   }
   
-  #centralPiles { gap: 16px; margin: 16px 0; }
+  #centralPiles { gap: 16px; margin: 24px 0; }
   
   /* Adjusted stacking for mobile */
   #yourHand .card {
-    margin-left: -25px; /* Less overlap for smaller cards */
+    margin-left: -28px; /* Less overlap for smaller cards */
   }
   #yourHand { 
       padding-top: 10px;
       padding-bottom: 25px;
+      min-height: 120px;
   }
   
-  .card .inner { font-size: 1.2rem; }
-  .card .corner { font-size: 0.6rem; }
+  .card .inner { font-size: 1.5rem; }
+  .card .corner { font-size: 0.8rem; }
+  
+  #helpButton {
+      top: 5px;
+      right: 5px;
+  }
 }
