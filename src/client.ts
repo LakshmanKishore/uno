@@ -1,6 +1,7 @@
 import "./styles.css"
 import { Card, Color } from "./logic.ts"
 import { PlayerId } from "rune-sdk"
+import { sounds } from "./sounds.ts"
 
 // eslint-disable-next-line @typescript-eslint/no-unused-vars
 const gameBoard = document.getElementById("gameBoard")!
@@ -61,6 +62,7 @@ rulesModal.querySelector(".close-rules")!.addEventListener("click", () => {
 let previousHandIds = new Set<string>()
 let previousTopDiscardId: string | null = null
 let firstRender = true
+let previousWinner: string | null = null
 
 // Cache positions of cards from the previous frame to enable accurate "from" animations
 // Key: CardID, Value: DOMRect
@@ -112,6 +114,20 @@ function createCardElement(
   if (isPlayable) {
     cardElement.classList.add("playable")
     cardElement.addEventListener("click", () => {
+      // Always close/reset the color picker first when clicking ANY playable card
+      // This allows users to cancel a selection by clicking another card
+      const pickerWasOpenForThisCard =
+        wildColorPickerElement.style.display === "flex" &&
+        wildColorPickerElement.dataset.cardId === card.id
+
+      wildColorPickerElement.style.display = "none"
+      wildColorPickerElement.dataset.cardId = ""
+
+      // If we just clicked the SAME wild card that was already open, we stop here (toggle off)
+      if (pickerWasOpenForThisCard) {
+        return
+      }
+
       if (card.color === null) {
         // If it's a wild card, show color picker
         wildColorPickerElement.style.display = "flex"
@@ -291,6 +307,14 @@ Rune.initClient({
 
       // Animation: Play Card (Hand -> Discard)
       if (!firstRender && currentTopCardId !== previousTopDiscardId && action) {
+        // Play Sound Effect based on card type
+        if (topCard.value === "skip") sounds.play("skip")
+        else if (topCard.value === "reverse") sounds.play("reverse")
+        else if (topCard.value === "shield") sounds.play("shield")
+        else if (topCard.value === "wild") sounds.play("changeColor")
+        else if (topCard.value === "wildDrawFour") sounds.play("fourAndWild")
+        else sounds.play("cardPlay")
+
         let sourceRect: DOMRect | undefined = undefined
 
         // 1. If YOU played the card, check our cache for where it was in your hand
@@ -374,6 +398,7 @@ Rune.initClient({
         action.name === "drawCard" &&
         action.playerId === yourPlayerId
       ) {
+        sounds.play("drawCard")
         const drawPileRect = drawPileElement.getBoundingClientRect()
 
         // Wait for layout to settle for the new card in hand
@@ -468,6 +493,9 @@ Rune.initClient({
     }
 
     if (winner) {
+      if (winner !== previousWinner) {
+        sounds.play("win")
+      }
       lastActionElement.textContent = `${winner} won the game!`
       actionButtonsElement.style.display = "none"
       wildColorPickerElement.style.display = "none"
@@ -479,6 +507,7 @@ Rune.initClient({
     // Update state for next render
     previousHandIds = currentHandIds
     previousTopDiscardId = currentTopCardId
+    previousWinner = winner
     firstRender = false
 
     // IMPORTANT: Update cache of card positions AFTER the DOM is fully rendered and browser has laid it out.
