@@ -17,6 +17,7 @@ export type Value =
   | "drawTwo"
   | "wild"
   | "wildDrawFour"
+  | "shield"
 
 export interface Card {
   color: Color
@@ -27,7 +28,7 @@ export interface Card {
 export interface PlayerState {
   id: PlayerId
   hand: Card[]
-  hasCalledUno: boolean
+  hasCalledOnu: boolean
 }
 
 export interface GameState {
@@ -51,7 +52,7 @@ export type GameActions = {
   }) => void
   drawCard: () => void
   passTurn: () => void
-  callUno: () => void
+  callOnu: () => void
 }
 
 declare global {
@@ -80,10 +81,11 @@ function createDeck(): Card[] {
     })
   })
 
-  // 4 Wild, 4 Wild Draw Four
+  // 4 Wild, 4 Wild Draw Four, 4 Wild Shield
   for (let i = 0; i < 4; i++) {
     deck.push({ color: null, value: "wild", id: `c-${idCounter++}` })
     deck.push({ color: null, value: "wildDrawFour", id: `c-${idCounter++}` })
+    deck.push({ color: null, value: "shield", id: `c-${idCounter++}` })
   }
 
   return deck
@@ -116,12 +118,16 @@ function isValidMove(
   // Always allow wilds to be played
   if (card.color === null) return true
 
-  // If there's a draw stack, only +2 or +4 cards can be played
+  // If there's a draw stack, only +2, +4, OR Shield cards can be played
   if (
     isDrawingPhase &&
     (topCard.value === "drawTwo" || topCard.value === "wildDrawFour")
   ) {
-    return card.value === "drawTwo" || card.value === "wildDrawFour"
+    return (
+      card.value === "drawTwo" ||
+      card.value === "wildDrawFour" ||
+      card.value === "shield"
+    )
   }
 
   // Card matches current color
@@ -141,7 +147,12 @@ function ensureDeck(game: GameState) {
       game.deck = shuffle(game.discardPile)
       game.discardPile = [currentTopCard]
       game.deck.forEach((c) => {
-        if (c.value === "wild" || c.value === "wildDrawFour") c.color = null
+        if (
+          c.value === "wild" ||
+          c.value === "wildDrawFour" ||
+          c.value === "shield"
+        )
+          c.color = null
       })
     }
   }
@@ -157,7 +168,7 @@ Rune.initLogic({
     const players: PlayerState[] = allPlayerIds.map((id) => ({
       id,
       hand: [],
-      hasCalledUno: false,
+      hasCalledOnu: false,
     }))
 
     // Deal 7 cards
@@ -223,6 +234,7 @@ Rune.initLogic({
           players.length
         )
       }
+      // Shield has no effect if it's the start card (just acts as a color/value starter)
     }
 
     return {
@@ -260,7 +272,9 @@ Rune.initLogic({
       const topCard = game.discardPile[game.discardPile.length - 1]
       const canPlayDrawCard =
         game.drawStack > 0 &&
-        (card.value === "drawTwo" || card.value === "wildDrawFour")
+        (card.value === "drawTwo" ||
+          card.value === "wildDrawFour" ||
+          card.value === "shield")
       if (
         !isValidMove(card, topCard, game.currentColor, game.drawStack > 0) &&
         !canPlayDrawCard
@@ -269,7 +283,9 @@ Rune.initLogic({
       }
 
       if (
-        (card.value === "wild" || card.value === "wildDrawFour") &&
+        (card.value === "wild" ||
+          card.value === "wildDrawFour" ||
+          card.value === "shield") &&
         !selectedColor
       ) {
         throw Rune.invalidAction()
@@ -283,7 +299,7 @@ Rune.initLogic({
 
       game.discardPile.push(card)
       game.currentColor = card.color === null ? selectedColor! : card.color
-      game.lastAction = `<PLAYER_NAME:${player.id}> played ${card.value === "wild" || card.value === "wildDrawFour" ? `Wild (${game.currentColor})` : card.value} ${card.color || ""}`
+      game.lastAction = `<PLAYER_NAME:${player.id}> played ${card.value === "wild" || card.value === "wildDrawFour" || card.value === "shield" ? `Wild (${game.currentColor})` : card.value} ${card.color || ""}`
 
       if (player.hand.length === 0) {
         game.winner = playerId
@@ -297,8 +313,8 @@ Rune.initLogic({
         return
       }
 
-      if (player.hand.length === 1 && !player.hasCalledUno) {
-        game.lastAction += ` (Forgot UNO! <PLAYER_NAME:${player.id}> draws 2)`
+      if (player.hand.length === 1 && !player.hasCalledOnu) {
+        game.lastAction += ` (Forgot ONU! <PLAYER_NAME:${player.id}> draws 2)`
         ensureDeck(game)
         for (let i = 0; i < 2; i++) {
           ensureDeck(game)
@@ -307,7 +323,7 @@ Rune.initLogic({
         }
       }
 
-      if (player.hand.length > 1) player.hasCalledUno = false
+      if (player.hand.length > 1) player.hasCalledOnu = false
 
       let nextPlayerSkip = false
 
@@ -323,6 +339,15 @@ Rune.initLogic({
         game.drawStack += 2
       } else if (card.value === "wildDrawFour") {
         game.drawStack += 4
+      } else if (card.value === "shield") {
+        // Shield Effect:
+        if (game.drawStack > 0) {
+          // If responding to a stack, REFLECT it (pass it to next player)
+          game.lastAction += ` (REFLECTED ${game.drawStack} cards!)`
+          // We DO NOT clear drawStack, just pass the turn.
+        } else {
+          // Normal play, no special effect
+        }
       }
 
       game.currentPlayerIndex = getNextPlayerIndex(
@@ -342,7 +367,10 @@ Rune.initLogic({
       if (game.drawStack > 0) {
         const currentPlayer = game.players[game.currentPlayerIndex]
         const canStackDraw = currentPlayer.hand.some(
-          (c) => c.value === "drawTwo" || c.value === "wildDrawFour"
+          (c) =>
+            c.value === "drawTwo" ||
+            c.value === "wildDrawFour" ||
+            c.value === "shield"
         )
 
         if (!canStackDraw) {
@@ -379,7 +407,7 @@ Rune.initLogic({
           if (c) player.hand.push(c)
         }
         game.drawStack = 0
-        player.hasCalledUno = false
+        player.hasCalledOnu = false
         game.currentPlayerIndex = getNextPlayerIndex(
           game.currentPlayerIndex,
           game.direction,
@@ -396,7 +424,7 @@ Rune.initLogic({
 
       game.drawnCard = newCard
       game.lastAction = `<PLAYER_NAME:${player.id}> drew a card.`
-      player.hasCalledUno = false
+      player.hasCalledOnu = false
     },
 
     passTurn: (_, { game, playerId }) => {
@@ -408,7 +436,7 @@ Rune.initLogic({
       if (game.drawStack > 0) throw Rune.invalidAction()
 
       player.hand.push(game.drawnCard)
-      player.hasCalledUno = false
+      player.hasCalledOnu = false
 
       game.drawnCard = null
       game.lastAction = `<PLAYER_NAME:${player.id}> passed their turn.`
@@ -419,7 +447,7 @@ Rune.initLogic({
       )
     },
 
-    callUno: (_, { game, playerId }) => {
+    callOnu: (_, { game, playerId }) => {
       const player = game.players.find((p) => p.id === playerId)
       if (!player) throw Rune.invalidAction()
 
@@ -429,8 +457,8 @@ Rune.initLogic({
       ) {
         if (player.hand.length > 2) throw Rune.invalidAction()
 
-        player.hasCalledUno = true
-        game.lastAction = `<PLAYER_NAME:${player.id}> called UNO!`
+        player.hasCalledOnu = true
+        game.lastAction = `<PLAYER_NAME:${player.id}> called ONU!`
       } else {
         throw Rune.invalidAction()
       }
@@ -460,7 +488,7 @@ Rune.initLogic({
       game.players.push({
         id: playerId,
         hand,
-        hasCalledUno: false,
+        hasCalledOnu: false,
       })
 
       game.lastAction = `<PLAYER_NAME:${playerId}> joined.`

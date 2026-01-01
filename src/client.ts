@@ -10,17 +10,17 @@ const drawPileElement = document.getElementById("drawPile")!
 const yourHandElement = document.getElementById("yourHand")!
 const actionButtonsElement = document.getElementById("actionButtons")!
 const wildColorPickerElement = document.getElementById("wildColorPicker")!
-const unoButtonElement = document.getElementById("unoButton")!
+const unoButtonElement = document.getElementById("onuButton")!
 const lastActionElement = document.getElementById("lastAction")!
 
-// Wrap UNO button
+// Wrap ONU button
 const unoContainer = document.createElement("div")
-unoContainer.className = "uno-button-container"
+unoContainer.className = "onu-button-container"
 unoButtonElement.parentNode?.insertBefore(unoContainer, unoButtonElement)
 unoContainer.appendChild(unoButtonElement)
 
 const unoHint = document.createElement("div")
-unoHint.className = "uno-hint"
+unoHint.className = "onu-hint"
 unoHint.textContent = "Click BEFORE playing!"
 unoContainer.insertBefore(unoHint, unoButtonElement)
 
@@ -34,14 +34,15 @@ const rulesModal = document.createElement("div")
 rulesModal.id = "rulesModal"
 rulesModal.innerHTML = `
     <div class="rules-content">
-        <h2>How to Play UNO</h2>
+        <h2>How to Play ONU</h2>
         <ul>
             <li>Match the top card on the discard pile by color, number, or symbol.</li>
             <li>Use Action cards (Skip, Reverse, Draw Two) to shake up the game.</li>
+            <li><strong>Wild Shield Cards (🛡️):</strong> Use these on ANY color to REFLECT a penalty stack (like a +2 or +4) to the next player! You also get to choose the next color.</li>
             <li>Wild cards can be played on any card to change the color.</li>
             <li>Wild Draw Four changes the color and makes the next player draw 4 cards.</li>
-            <li><strong>IMPORTANT:</strong> If you have 2 cards left, you MUST click the "UNO" button <em>before</em> playing your second-to-last card.</li>
-            <li>If you forget to call UNO, you will be forced to draw 2 penalty cards!</li>
+            <li><strong>IMPORTANT:</strong> If you have 2 cards left, you MUST click the "ONU" button <em>before</em> playing your second-to-last card.</li>
+            <li>If you forget to call ONU, you will be forced to draw 2 penalty cards!</li>
             <li>First player to get rid of all their cards wins!</li>
         </ul>
         <button class="close-rules">Close</button>
@@ -84,6 +85,7 @@ function createCardElement(
   else if (card.value === "drawTwo") symbol = "+2"
   else if (card.value === "wild") symbol = "W"
   else if (card.value === "wildDrawFour") symbol = "+4"
+  else if (card.value === "shield") symbol = "🛡️"
   else if (!isNaN(Number(card.value))) {
     // It's a number, leave it as is
   } else {
@@ -157,7 +159,7 @@ function initUI(playerIds: PlayerId[], yourPlayerId: PlayerId | undefined) {
       <img src="${playerInfo.avatarUrl}" alt="${playerInfo.displayName}" />
       <span class="player-name">${playerInfo.displayName}</span>
       <span class="card-count"></span>
-      <span class="uno-status"></span>
+      <span class="onu-status"></span>
     `
     if (playerId === yourPlayerId) {
       li.classList.add("you")
@@ -174,7 +176,7 @@ function initUI(playerIds: PlayerId[], yourPlayerId: PlayerId | undefined) {
 
   drawCardButton.addEventListener("click", () => Rune.actions.drawCard())
   passTurnButton.addEventListener("click", () => Rune.actions.passTurn())
-  unoButtonElement.addEventListener("click", () => Rune.actions.callUno())
+  unoButtonElement.addEventListener("click", () => Rune.actions.callOnu())
 }
 
 // Animation helper
@@ -329,6 +331,10 @@ Rune.initClient({
     if (deck.length > 0 || drawnCard) {
       const drawCardPlaceholder = document.createElement("div")
       drawCardPlaceholder.className = "card back"
+      const onuText = document.createElement("div")
+      onuText.className = "card-back-onu-text"
+      onuText.textContent = "ONU"
+      drawCardPlaceholder.appendChild(onuText)
       drawPileElement.appendChild(drawCardPlaceholder)
     }
 
@@ -393,7 +399,7 @@ Rune.initClient({
             <img src="${playerInfo.avatarUrl}" alt="${playerInfo.displayName}" />
             <span class="player-name">${playerInfo.displayName}</span>
             <span class="card-count"></span>
-            <span class="uno-status"></span>
+            <span class="onu-status"></span>
           `
           if (playerState.id === yourPlayerId) {
             playerContainer.classList.add("you")
@@ -415,8 +421,8 @@ Rune.initClient({
         }
         countSpan.textContent = countText
 
-        playerContainer.querySelector(".uno-status")!.textContent =
-          playerState.hasCalledUno ? "UNO!" : ""
+        playerContainer.querySelector(".onu-status")!.textContent =
+          playerState.hasCalledOnu ? "ONU!" : ""
       }
     })
 
@@ -449,14 +455,14 @@ Rune.initClient({
       isYourTurn &&
       !winner &&
       yourPlayerState.hand.length <= 2 &&
-      !yourPlayerState.hasCalledUno
+      !yourPlayerState.hasCalledOnu
     ) {
       unoContainer.style.display = "flex"
     } else {
       unoContainer.style.display = "none"
     }
 
-    if (yourPlayerState.hasCalledUno) {
+    if (yourPlayerState.hasCalledOnu) {
       unoButtonElement.classList.add("active")
       unoContainer.style.display = "none"
     }
