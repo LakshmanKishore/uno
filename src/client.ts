@@ -39,7 +39,7 @@ rulesModal.innerHTML = `
         <ul>
             <li>Match the top card on the discard pile by color, number, or symbol.</li>
             <li>Use Action cards (Skip, Reverse, Draw Two) to shake up the game.</li>
-            <li><strong>Wild Shield Cards (🛡️):</strong> Use these on ANY color to REFLECT a penalty stack (like a +2 or +4) to the next player! You also get to choose the next color.</li>
+            <li><strong>Wild Shield Cards (🛡️):</strong> Use these on ANY color to BLOCK a penalty stack (like a +2 or +4)! The penalty is cleared, and you choose the next color.</li>
             <li>Wild cards can be played on any card to change the color.</li>
             <li>Wild Draw Four changes the color and makes the next player draw 4 cards.</li>
             <li><strong>IMPORTANT:</strong> If you have 2 cards left, you MUST click the "ONU" button <em>before</em> playing your second-to-last card.</li>
@@ -366,7 +366,7 @@ Rune.initClient({
     yourHandElement.innerHTML = ""
     const allCardsInHand = [
       ...yourPlayerState.hand,
-      ...(drawnCard ? [drawnCard] : []),
+      ...(isYourTurn && drawnCard ? [drawnCard] : []),
     ]
     const topDiscardCard = discardPile[discardPile.length - 1]
     const currentHandIds = new Set<string>()
@@ -377,7 +377,10 @@ Rune.initClient({
       let isPlayable = false
       if (isYourTurn && !winner) {
         if (drawStack > 0) {
-          isPlayable = card.value === "drawTwo" || card.value === "wildDrawFour"
+          isPlayable =
+            card.value === "drawTwo" ||
+            card.value === "wildDrawFour" ||
+            card.value === "shield"
         } else {
           isPlayable =
             card.color === null ||
@@ -441,7 +444,7 @@ Rune.initClient({
 
         const countSpan = playerContainer.querySelector(".card-count")!
         let countText = `${playerState.hand.length} Cards`
-        if (isCurrentPlayer && isYourTurn && drawStack > 0) {
+        if (isCurrentPlayer && drawStack > 0) {
           countText += ` (Draw ${drawStack})`
         }
         countSpan.textContent = countText
@@ -470,6 +473,12 @@ Rune.initClient({
       } else {
         drawCardButton.style.display = "block"
         passTurnButton.style.display = "none"
+        // Update draw button text based on stack
+        if (drawStack > 0) {
+          drawCardButton.textContent = `Draw ${drawStack} Cards`
+        } else {
+          drawCardButton.textContent = Rune.t("Draw Card")
+        }
       }
     } else {
       drawCardButton.style.display = "none"

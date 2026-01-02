@@ -115,20 +115,17 @@ function isValidMove(
   currentColor: Exclude<Color, null>,
   isDrawingPhase: boolean
 ): boolean {
-  // Always allow wilds to be played
-  if (card.color === null) return true
-
-  // If there's a draw stack, only +2, +4, OR Shield cards can be played
-  if (
-    isDrawingPhase &&
-    (topCard.value === "drawTwo" || topCard.value === "wildDrawFour")
-  ) {
+  // If we are in a drawing phase (stack > 0), strictly limit moves
+  if (isDrawingPhase) {
     return (
       card.value === "drawTwo" ||
       card.value === "wildDrawFour" ||
       card.value === "shield"
     )
   }
+
+  // Always allow wilds to be played
+  if (card.color === null) return true
 
   // Card matches current color
   if (card.color === currentColor) return true
@@ -267,6 +264,13 @@ Rune.initLogic({
         playingDrawn = true
       }
 
+      // If playing a card from hand while having a pending drawn card,
+      // move the drawn card to hand.
+      if (!playingDrawn && game.drawnCard) {
+        player.hand.push(game.drawnCard)
+        game.drawnCard = null
+      }
+
       if (!card) throw Rune.invalidAction()
 
       const topCard = game.discardPile[game.discardPile.length - 1]
@@ -342,9 +346,9 @@ Rune.initLogic({
       } else if (card.value === "shield") {
         // Shield Effect:
         if (game.drawStack > 0) {
-          // If responding to a stack, REFLECT it (pass it to next player)
-          game.lastAction += ` (REFLECTED ${game.drawStack} cards!)`
-          // We DO NOT clear drawStack, just pass the turn.
+          // If responding to a stack, BLOCK it (clear the stack)
+          game.lastAction += ` (BLOCKED ${game.drawStack} cards!)`
+          game.drawStack = 0
         } else {
           // Normal play, no special effect
         }
@@ -362,32 +366,6 @@ Rune.initLogic({
           game.players.length
         )
         game.lastAction += ` (Skipped next player)`
-      }
-
-      if (game.drawStack > 0) {
-        const currentPlayer = game.players[game.currentPlayerIndex]
-        const canStackDraw = currentPlayer.hand.some(
-          (c) =>
-            c.value === "drawTwo" ||
-            c.value === "wildDrawFour" ||
-            c.value === "shield"
-        )
-
-        if (!canStackDraw) {
-          game.lastAction += ` (<PLAYER_NAME:${currentPlayer.id}> draws ${game.drawStack} cards)`
-          ensureDeck(game)
-          for (let i = 0; i < game.drawStack; i++) {
-            ensureDeck(game)
-            const c = game.deck.pop()
-            if (c) currentPlayer.hand.push(c)
-          }
-          game.drawStack = 0
-          game.currentPlayerIndex = getNextPlayerIndex(
-            game.currentPlayerIndex,
-            game.direction,
-            game.players.length
-          )
-        }
       }
 
       game.drawnCard = null
